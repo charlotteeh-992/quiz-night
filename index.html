@@ -1,844 +1,444 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clear & Guess - Game Night Edition</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Clear & Guess Game Night</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QR Code Generator CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Outfit', sans-serif; }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .neon-glow-purple { box-shadow: 0 0 25px rgba(168, 85, 247, 0.35); }
-        .neon-glow-emerald { box-shadow: 0 0 25px rgba(16, 185, 129, 0.35); }
-    </style>
-</head>
-<body class="h-full text-slate-100 flex flex-col justify-between overflow-x-hidden antialiased">
-
-    <!-- HEADER / ROLE INDICATOR -->
-    <header class="w-full border-b border-slate-800 bg-slate-900/60 px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-            <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-purple-400 via-pink-400 to-emerald-400 bg-clip-text text-transparent uppercase">
-                Clear & Guess
-            </h1>
-        </div>
-        <div id="role-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-slate-800 border border-slate-700 text-slate-300">
-            Selecting Role...
-        </div>
-    </header>
-
-    <!-- MAIN CONTAINER -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col justify-center items-center">
-
-        <!-- MODE SELECTION MENU (DEFAULT IF NO URL PARAMS) -->
-        <div id="view-select" class="w-full max-w-md glass-panel p-8 rounded-3xl shadow-2xl space-y-6 text-center border border-slate-800">
-            <h2 class="text-2xl font-black text-white">Choose Screen Mode</h2>
-            <p class="text-slate-400 text-sm">Select which device interface to run for this screen:</p>
-            <div class="space-y-3">
-                <button onclick="switchMode('tv')" class="w-full py-4 bg-purple-600 hover:bg-purple-500 font-bold rounded-2xl transition-all shadow-lg hover:shadow-purple-500/20 flex items-center justify-center space-x-3">
-                    <span class="text-xl">📺</span> <span>TV Display Screen</span>
-                </button>
-                <button onclick="switchMode('host')" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 flex items-center justify-center space-x-3">
-                    <span class="text-xl">👑</span> <span>Host Control Panel</span>
-                </button>
-                <button onclick="switchMode('player')" class="w-full py-4 bg-pink-600 hover:bg-pink-500 font-bold rounded-2xl transition-all shadow-lg hover:shadow-pink-500/20 flex items-center justify-center space-x-3">
-                    <span class="text-xl">📱</span> <span>Mobile Player Controller</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- HOST PASSWORD AUTH GATE -->
-        <div id="view-host-auth" class="hidden w-full max-w-md glass-panel p-8 rounded-3xl space-y-6 text-center border border-slate-800">
-            <div class="text-4xl mb-2">🔒</div>
-            <h2 class="text-2xl font-black text-emerald-400">Host Authentication</h2>
-            <p class="text-slate-400 text-sm">Enter the host password to access game setup and control panel:</p>
-            <form onsubmit="authenticateHost(event)" class="space-y-4">
-                <input type="password" id="host-pass-input" placeholder="Enter Host Password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-white focus:outline-none focus:border-emerald-500 text-lg font-mono">
-                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl transition text-white">Unlock Host Controls</button>
-            </form>
-            <p id="auth-error" class="text-xs text-rose-500 hidden font-semibold">Incorrect password! Default password is host123</p>
-        </div>
-
-        <!-- 1. TV DISPLAY VIEW -->
-        <div id="view-tv" class="hidden w-full space-y-6 flex flex-col items-center">
-            
-            <!-- LIVE GAME CANVAS SCREEN -->
-            <div id="tv-live-screen" class="w-full max-w-5xl space-y-6">
-                <!-- TOP BAR WITH QR CODE & ROOM INFO -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 glass-panel p-4 rounded-2xl items-center">
-                    <div class="flex items-center space-x-4 md:col-span-3">
-                        <div id="tv-qr" class="bg-white p-2 rounded-xl border border-slate-200"></div>
-                        <div>
-                            <span class="text-xs text-slate-400 uppercase tracking-widest block font-bold">Scan to Join</span>
-                            <span class="text-xl font-extrabold text-purple-400 block" id="tv-join-url">Loading URL...</span>
-                            <span class="text-xs text-slate-500 block">Round <span id="tv-round-num" class="text-emerald-400 font-bold">0</span> / 10</span>
-                        </div>
-                    </div>
-                    <div class="text-right border-t md:border-t-0 md:border-l border-slate-800 pt-2 md:pt-0 md:pl-4">
-                        <span class="text-xs text-slate-400 uppercase tracking-wider block">Round Status</span>
-                        <span id="tv-status-badge" class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-block mt-1">Waiting</span>
-                    </div>
-                </div>
-
-                <!-- MAIN DISPLAY CANVAS / UNBLUR -->
-                <div class="relative w-full aspect-video glass-panel rounded-3xl overflow-hidden border-2 border-slate-800 flex items-center justify-center neon-glow-purple">
-                    <canvas id="tv-canvas" class="w-full h-full object-contain"></canvas>
-                    <div id="tv-overlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center space-y-4 text-center p-6">
-                        <div class="text-6xl animate-bounce">🎬</div>
-                        <h3 class="text-3xl font-black text-white" id="tv-overlay-title">Waiting for Host to start Round 1</h3>
-                        <p class="text-slate-400 text-sm max-w-md" id="tv-overlay-desc">Scan the QR code with your phone camera to register your player name and prepare your guesses!</p>
-                    </div>
-                </div>
-
-                <!-- LIVE SUBMISSIONS TICKER FOR TV -->
-                <div class="glass-panel p-6 rounded-2xl">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center space-x-2">
-                        <span>⚡ Live Incoming Guesses</span>
-                    </h3>
-                    <div id="tv-submissions-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <p class="text-slate-500 italic text-sm col-span-full">No guesses submitted yet this round...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- GRAND FINALE / 10-ROUND SUMMARY & PODIUM SCREEN -->
-            <div id="tv-finale-screen" class="hidden w-full max-w-6xl space-y-8">
-                <div class="text-center space-y-2">
-                    <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300">🏆 GAME NIGHT GRAND FINALE 🏆</h2>
-                    <p class="text-slate-400 text-sm">10 Rounds Completed! Here are the answers, winners, and overall leaderboard.</p>
-                </div>
-
-                <!-- PODIUM (1st, 2nd, 3rd) -->
-                <div id="tv-podium-container" class="grid grid-cols-3 gap-4 max-w-2xl mx-auto items-end pt-8 pb-4">
-                    <!-- 2nd Place -->
-                    <div id="podium-2" class="glass-panel p-4 rounded-t-2xl text-center border-t-4 border-slate-300 space-y-2 h-40 flex flex-col justify-end">
-                        <div class="text-2xl">🥈</div>
-                        <div class="font-bold text-slate-200 truncate" id="podium-2-name">-</div>
-                        <div class="text-xs text-slate-400 font-mono" id="podium-2-score">0 pts</div>
-                    </div>
-                    <!-- 1st Place -->
-                    <div id="podium-1" class="glass-panel p-4 rounded-t-2xl text-center border-t-4 border-amber-400 space-y-2 h-52 flex flex-col justify-end neon-glow-purple">
-                        <div class="text-4xl">👑</div>
-                        <div class="font-black text-amber-300 text-lg truncate" id="podium-1-name">-</div>
-                        <div class="text-sm font-bold text-amber-400 font-mono" id="podium-1-score">0 pts</div>
-                    </div>
-                    <!-- 3rd Place -->
-                    <div id="podium-3" class="glass-panel p-4 rounded-t-2xl text-center border-t-4 border-amber-700 space-y-2 h-32 flex flex-col justify-end">
-                        <div class="text-2xl">🥉</div>
-                        <div class="font-bold text-amber-600 truncate" id="podium-3-name">-</div>
-                        <div class="text-xs text-slate-400 font-mono" id="podium-3-score">0 pts</div>
-                    </div>
-                </div>
-
-                <!-- 10-ROUND RECAP GRID -->
-                <div class="glass-panel p-6 rounded-3xl space-y-4">
-                    <h3 class="text-lg font-bold text-slate-200">10-Round Recap Gallery</h3>
-                    <div id="tv-recap-grid" class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <!-- Dynamically filled with round cards -->
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- 2. HOST CONTROL PANEL VIEW -->
-        <div id="view-host" class="hidden w-full max-w-5xl space-y-6">
-            
-            <div class="glass-panel p-6 rounded-3xl flex flex-wrap justify-between items-center gap-4 border border-emerald-500/20">
-                <div>
-                    <h2 class="text-2xl font-black text-emerald-400">👑 Host Command Dashboard</h2>
-                    <p class="text-slate-400 text-xs">Manage quiz deck, control 10 reveal rounds, grade player answers.</p>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="resetWholeGame()" class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 text-xs font-bold rounded-xl border border-rose-500/30 transition">↻ Reset Entire Game</button>
-                    <button onclick="toggleDeckBuilder()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition">📂 Deck Setup (10 Images)</button>
-                </div>
-            </div>
-
-            <!-- DECK BUILDER PANEL (COLLAPSIBLE) -->
-            <div id="host-deck-builder" class="glass-panel p-6 rounded-3xl space-y-6">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-                    <h3 class="text-lg font-bold text-white">Quiz Deck Setup (10 Rounds)</h3>
-                    <button onclick="loadSampleDeck()" class="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600 text-purple-300 text-xs font-bold rounded-xl border border-purple-500/30 transition">✨ Load Sample 10-Image Deck</button>
-                </div>
-                <div id="deck-inputs-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
-                    <!-- 10 Image slots generated via JS -->
-                </div>
-                <div class="flex justify-end pt-4 border-t border-slate-800">
-                    <button onclick="saveDeckToFirebase()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20">💾 Save Quiz Deck to Cloud</button>
-                </div>
-            </div>
-
-            <!-- MAIN HOST GAME CONTROLLER -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <!-- LEFT COLUMN: ROUND CONTROLS & CURRENT CARD -->
-                <div class="lg:col-span-1 glass-panel p-6 rounded-3xl space-y-6">
-                    <div class="space-y-1">
-                        <span class="text-xs text-slate-400 uppercase tracking-widest font-bold">Active Game Control</span>
-                        <h3 class="text-2xl font-black text-white">Round <span id="host-round-num" class="text-emerald-400">1</span> / 10</h3>
-                    </div>
-
-                    <div class="aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 relative flex items-center justify-center">
-                        <img id="host-current-preview" src="" alt="Preview" class="w-full h-full object-contain hidden">
-                        <span id="host-no-img-text" class="text-xs text-slate-500 italic">No Deck Loaded</span>
-                    </div>
-
-                    <div class="space-y-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-sm">
-                        <div><span class="text-slate-500 text-xs block">Answer Key:</span> <span id="host-current-answer" class="font-bold text-emerald-400 text-base">-</span></div>
-                        <div><span class="text-slate-500 text-xs block">Points Value:</span> <span id="host-current-points" class="font-bold text-amber-400 font-mono">-</span></div>
-                    </div>
-
-                    <div class="space-y-3 pt-2">
-                        <button onclick="startHostRound()" id="btn-start-round" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-2xl transition text-white shadow-lg shadow-emerald-600/20">🚀 Start Unblur Reveal</button>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="prevHostRound()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition">⬅️ Prev Round</button>
-                            <button onclick="nextHostRound()" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition">Next Round ➡️</button>
-                        </div>
-                        <button onclick="triggerGrandFinale()" class="w-full py-3 bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 font-bold text-xs rounded-xl transition">🏁 Trigger Grand Finale / Podium</button>
-                    </div>
-                </div>
-
-                <!-- RIGHT COLUMN: LIVE GRADING DASHBOARD -->
-                <div class="lg:col-span-2 glass-panel p-6 rounded-3xl space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                        <h3 class="font-bold text-white text-lg">Live Submissions & Grading</h3>
-                        <span class="text-xs text-slate-400">Click Correct to allocate fastest points</span>
-                    </div>
-
-                    <div id="host-submissions-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                        <p class="text-slate-500 italic text-sm">Waiting for round to start and submissions to arrive...</p>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- 3. MOBILE PLAYER CONTROLLER VIEW -->
-        <div id="view-player" class="hidden w-full max-w-md space-y-6">
-            
-            <!-- REGISTRATION FORM -->
-            <div id="player-register-card" class="glass-panel p-8 rounded-3xl space-y-6 text-center border border-pink-500/20 neon-glow-purple">
-                <div class="text-5xl">🎮</div>
-                <h2 class="text-2xl font-black text-pink-400">Join Game Night</h2>
-                <p class="text-slate-400 text-sm">Enter your display name to start submitting guesses:</p>
-                <form onsubmit="registerPlayer(event)" class="space-y-4">
-                    <input type="text" id="player-name-input" placeholder="Your Player Name" required maxlength="15" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-center text-white focus:outline-none focus:border-pink-500 text-lg font-bold">
-                    <button type="submit" class="w-full py-4 bg-pink-600 hover:bg-pink-500 font-extrabold text-lg rounded-2xl transition text-white shadow-lg shadow-pink-600/30">JOIN GAME</button>
-                </form>
-            </div>
-
-            <!-- ACTIVE PLAYER SCREEN -->
-            <div id="player-game-card" class="hidden space-y-4">
-                
-                <div class="glass-panel p-4 rounded-2xl flex justify-between items-center">
-                    <div>
-                        <span class="text-xs text-slate-400 block">Playing as</span>
-                        <span id="player-display-name" class="font-black text-pink-400 text-lg">Player</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-xs text-slate-400 block">Score</span>
-                        <span id="player-display-score" class="font-black text-amber-400 font-mono text-lg">0 pts</span>
-                    </div>
-                </div>
-
-                <!-- PLAYER CANVAS REVEAL SYNCHRONIZED -->
-                <div class="relative aspect-video glass-panel rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
-                    <canvas id="player-canvas" class="w-full h-full object-contain"></canvas>
-                    <div id="player-canvas-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center text-center p-4">
-                        <span id="player-overlay-msg" class="text-slate-400 font-bold text-sm">Waiting for next image reveal...</span>
-                    </div>
-                </div>
-
-                <!-- GUESS INPUT FORM -->
-                <div class="glass-panel p-6 rounded-3xl space-y-4 border border-slate-800">
-                    <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Your Answer Guess</label>
-                        <input type="text" id="player-guess-input" placeholder="Type what you see..." autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-lg focus:outline-none focus:border-emerald-500 font-semibold">
-                    </div>
-                    <button onclick="submitPlayerGuess()" id="btn-submit-guess" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-black text-lg rounded-2xl transition text-white shadow-lg shadow-emerald-600/30">SUBMIT GUESS ⚡</button>
-                    
-                    <div id="player-feedback" class="hidden p-3 rounded-xl text-center text-xs font-bold"></div>
-                </div>
-
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="w-full border-t border-slate-900 bg-slate-950 py-3 text-center text-xs text-slate-600">
-        Clear & Guess Game Night Edition &bull; Local Peer Sync & Firebase Cloud Enabled
-    </footer>
-
-    <!-- FIREBASE INITIALIZATION & LOGIC (MODULAR JS V10) -->
+    <!-- Firebase v10 SDK via CDN -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getFirestore, doc, setDoc, getDoc, collection, onSnapshot, updateDoc, deleteDoc, query, getDocs 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // =========================================================================
-        // 🔑 FIREBASE CONFIGURATION (PASTE YOUR KEYS HERE IF DEPLOYING TO CLOUD)
-        // =========================================================================
-const firebaseConfig = {
+        // ==========================================
+        // PASTE YOUR FIREBASE CONFIG HERE
+        // ==========================================
+        const firebaseConfig = {
   apiKey: "AIzaSyA9dl1XOJRb2nrsLzumNg9ypJO_gqqRwaY",
   authDomain: "quiz-night-c0d48.firebaseapp.com",
   projectId: "quiz-night-c0d48",
   storageBucket: "quiz-night-c0d48.firebasestorage.app",
   messagingSenderId: "319510039819",
   appId: "1:319510039819:web:59b818c259c2b47d79a60e"
-};
+        };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // App-scoped Global State Variables
-        window.appState = {
-            db: db,
-            role: 'select',
-            authenticatedHost: false,
-            playerName: '',
-            currentRound: 1,
-            unblurDuration: 15000,
-            deck: [],
-            submissions: [],
-            leaderboard: {},
-            gameStatus: 'idle',
-            animationTimer: null
-        };
+        // Make firebase accessible globally
+        window.FB = { db, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion };
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-        // Default Sample 10-Image Deck
-        const SAMPLE_DECK = [
-            { url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', answer: 'Eiffel Tower Paris', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800', answer: 'Big Ben London', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800', answer: 'Grand Canyon', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800', answer: 'Tropical Beach', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800', answer: 'Nike Shoe Sneaker', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=800', answer: 'Chocolate Cupcake', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800', answer: 'Cute Cat', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800', answer: 'Golden Retriever Dog', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800', answer: 'Gaming Controller', points: 100 },
-            { url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800', answer: 'Arcade Machine', points: 100 }
-        ];
+    <!-- LANDING VIEW -->
+    <div id="view-landing" class="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl text-center space-y-6">
+        <h1 class="text-3xl font-black bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Clear & Guess</h1>
+        <p class="text-slate-400 text-sm">Select your screen mode for game night:</p>
+        <div class="space-y-3">
+            <button onclick="setMode('tv')" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl transition shadow-lg">📺 TV Display Screen</button>
+            <button onclick="promptHostLogin()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl transition shadow-lg">📋 Host Dashboard</button>
+            <button onclick="setMode('player')" class="w-full py-4 bg-pink-600 hover:bg-pink-500 font-bold rounded-xl transition shadow-lg">📱 Player Phone</button>
+        </div>
+    </div>
 
-        // Global functions tied to window
-        window.switchMode = function(mode) {
-            window.appState.role = mode;
-            ['view-select', 'view-tv', 'view-host-auth', 'view-host', 'view-player'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
+    <!-- HOST PASSWORD MODAL -->
+    <div id="host-auth-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4">
+            <h3 class="text-xl font-bold text-emerald-400">Host Password Required</h3>
+            <p class="text-xs text-slate-400">Enter host password (default: <span class="text-white font-mono">host123</span>)</p>
+            <input type="password" id="host-pwd-input" placeholder="Password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500">
+            <div class="flex gap-2">
+                <button onclick="verifyHostPassword()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl transition">Login</button>
+                <button onclick="document.getElementById('host-auth-modal').classList.add('hidden')" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-            const badge = document.getElementById('role-badge');
+    <!-- VIEW: TV DISPLAY -->
+    <div id="view-tv" class="hidden w-full max-w-5xl space-y-6">
+        <div class="flex justify-between items-center bg-slate-900 px-6 py-4 rounded-xl border border-slate-800">
+            <div>
+                <span class="text-xs text-slate-400 uppercase tracking-wider block">Scan to Join</span>
+                <div id="tv-qr-container" class="bg-white p-2 rounded-lg inline-block mt-1"></div>
+            </div>
+            <div class="text-center">
+                <h2 id="tv-round-title" class="text-xl font-black text-purple-400">Waiting for Host...</h2>
+                <span id="tv-player-count" class="text-xs text-slate-400">0 Players Connected</span>
+            </div>
+            <div>
+                <span class="text-xs text-slate-400 uppercase tracking-wider block">Leaderboard</span>
+                <div id="tv-top-scores" class="text-sm font-bold text-amber-400">No scores yet</div>
+            </div>
+        </div>
+
+        <div class="relative bg-slate-900 border-4 border-slate-800 rounded-2xl overflow-hidden aspect-video flex items-center justify-center shadow-2xl">
+            <canvas id="tv-canvas" class="w-full h-full object-contain"></canvas>
+            <div id="tv-status-overlay" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center space-y-3">
+                <h3 class="text-3xl font-bold animate-pulse">Game Night Ready!</h3>
+                <p class="text-slate-400">Scan the QR code with your phone to join.</p>
+            </div>
+        </div>
+
+        <!-- Grand Finale Recap Screen (Hidden until round 10 finishes) -->
+        <div id="tv-finale" class="hidden bg-slate-900 border border-slate-800 p-6 rounded-xl text-center space-y-6">
+            <h2 class="text-4xl font-black bg-gradient-to-r from-amber-400 to-pink-500 bg-clip-text text-transparent">🏆 FINAL PODIUM & RECAP 🏆</h2>
+            <div id="tv-finale-podium" class="grid grid-cols-3 gap-4 max-w-2xl mx-auto"></div>
+            <div id="tv-finale-grid" class="grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-slate-800"></div>
+        </div>
+    </div>
+
+    <!-- VIEW: HOST DASHBOARD -->
+    <div id="view-host" class="hidden w-full max-w-5xl space-y-6">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">Host Control Center</h1>
+                <p class="text-xs text-slate-400">Manage 10 Image Rounds & Grade Answers</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="startNextRound()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl shadow-lg transition">🚀 Start Current Round</button>
+                <button onclick="resetGameSession()" class="px-4 py-3 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl transition">🔄 Reset Game</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 10-Image Deck Manager -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <h3 class="font-bold text-lg text-slate-200">1. Setup 10 Quiz Images & Answers</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Upload Image (Round <span id="deck-round-num">1</span>/10)</label>
+                        <input type="file" id="host-img-file" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-emerald-600 file:text-white cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Correct Answer Key</label>
+                        <input type="text" id="host-ans-input" placeholder="e.g. Eiffel Tower" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <button onclick="addDeckImage()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-xl transition">➕ Add Image to Queue (<span id="deck-count">0</span>/10)</button>
+                </div>
+                <div id="deck-list" class="space-y-2 max-h-40 overflow-y-auto text-xs text-slate-400 pt-2 border-t border-slate-800">
+                    <p class="italic">No images added yet. Add up to 10 images.</p>
+                </div>
+            </div>
+
+            <!-- Grading & Submissions Panel -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-4">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-200 mb-2">2. Grade Player Submissions (Round <span id="host-current-round">1</span>)</h3>
+                    <div id="host-submissions-list" class="space-y-3 max-h-60 overflow-y-auto">
+                        <p class="text-slate-500 italic text-sm">Waiting for round to start and players to submit...</p>
+                    </div>
+                </div>
+                <button onclick="nextRound()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl transition">Next Round ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: PLAYER PHONE -->
+    <div id="view-player" class="hidden w-full max-w-md space-y-6">
+        <div id="player-join" class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+            <h2 class="text-2xl font-black text-pink-400 text-center">Join Game Night</h2>
+            <input type="text" id="player-name" placeholder="Your Name" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-pink-500">
+            <button onclick="joinGame()" class="w-full py-4 bg-pink-600 hover:bg-pink-500 font-bold rounded-xl transition shadow-lg">JOIN GAME</button>
+        </div>
+
+        <div id="player-game" class="hidden space-y-4">
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center">
+                <span id="player-display-name" class="font-bold text-pink-400">---</span>
+                <span id="player-score-badge" class="text-xs bg-slate-800 px-3 py-1 rounded-full text-amber-400 font-bold">Score: 0 pts</span>
+            </div>
+            <div class="relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
+                <canvas id="player-canvas" class="w-full h-full object-contain"></canvas>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <input type="text" id="player-answer" placeholder="Type your guess..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-pink-500">
+                <button onclick="submitAnswer()" id="submit-btn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl transition shadow-lg">SUBMIT ANSWER</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        const GAME_ID = "gameroom_01"; // Unique Firestore document ID for your session
+        let currentMode = 'landing';
+        let playerName = '';
+        let myScore = 0;
+        let deckImages = [];
+        let unblurDuration = 15000;
+
+        window.addEventListener('firebase-ready', () => {
+            initFirebaseListener();
+        });
+
+        function setMode(mode) {
+            currentMode = mode;
+            ['view-landing', 'view-tv', 'view-host', 'view-player'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('view-' + mode).classList.remove('hidden');
 
             if (mode === 'tv') {
-                document.getElementById('view-tv').classList.remove('hidden');
-                badge.innerText = 'TV Display Screen';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-purple-500/20 text-purple-400 border border-purple-500/30';
-                initTVDisplay();
-            } else if (mode === 'host') {
-                if (!window.appState.authenticatedHost) {
-                    document.getElementById('view-host-auth').classList.remove('hidden');
-                } else {
-                    document.getElementById('view-host').classList.remove('hidden');
-                }
-                badge.innerText = 'Host Control Panel';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                initHostPanel();
-            } else if (mode === 'player') {
-                document.getElementById('view-player').classList.remove('hidden');
-                badge.innerText = 'Mobile Player';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-pink-500/20 text-pink-400 border border-pink-500/30';
+                const joinUrl = window.location.origin + window.location.pathname + '?mode=player';
+                new QRCode(document.getElementById('tv-qr-container'), { text: joinUrl, width: 110, height: 110 });
             }
-        };
+        }
 
-        // Host Authentication
-        window.authenticateHost = function(e) {
-            e.preventDefault();
-            const pass = document.getElementById('host-pass-input').value;
-            if (pass === 'host123') {
-                window.appState.authenticatedHost = true;
-                document.getElementById('view-host-auth').classList.add('hidden');
-                document.getElementById('view-host').classList.remove('hidden');
-                initHostPanel();
+        function promptHostLogin() {
+            document.getElementById('host-auth-modal').classList.remove('hidden');
+        }
+
+        function verifyHostPassword() {
+            const pwd = document.getElementById('host-pwd-input').value;
+            if (pwd === 'host123') {
+                document.getElementById('host-auth-modal').classList.add('hidden');
+                setMode('host');
             } else {
-                document.getElementById('auth-error').classList.remove('hidden');
+                alert('Incorrect password! Default is host123');
             }
-        };
+        }
 
-        // Initialize Firestore Snapshots
-        function setupFirestoreListeners() {
-            // 1. Listen to global game state
-            onSnapshot(doc(db, "game", "current"), (docSnap) => {
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'player') setMode('player');
+        });
+
+        // --- FIREBASE SYNC ---
+        function initFirebaseListener() {
+            const { db, doc, onSnapshot } = window.FB;
+            onSnapshot(doc(db, "games", GAME_ID), (docSnap) => {
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    window.appState.gameStatus = data.status || 'idle';
-                    window.appState.currentRound = data.round || 1;
-                    
-                    // Sync TV Display
-                    updateTVScreen(data);
-                    // Sync Player Display
-                    updatePlayerScreen(data);
-                    // Sync Host Display
-                    if (window.appState.role === 'host') {
-                        document.getElementById('host-round-num').innerText = data.round || 1;
-                    }
-                }
-            }, (err) => console.log("Firestore fallback/sync active:", err));
-
-            // 2. Listen to Submissions
-            onSnapshot(collection(db, "submissions"), (snapshot) => {
-                const subs = [];
-                snapshot.forEach((doc) => subs.push({ id: doc.id, ...doc.data() }));
-                // Sort by reaction time
-                subs.sort((a, b) => a.timeMs - b.timeMs);
-                window.appState.submissions = subs;
-
-                renderTVSubmissions(subs);
-                renderHostSubmissions(subs);
-            });
-
-            // 3. Listen to Leaderboard
-            onSnapshot(doc(db, "game", "leaderboard"), (docSnap) => {
-                if (docSnap.exists()) {
-                    window.appState.leaderboard = docSnap.data();
-                    renderLeaderboards();
+                    const gameState = docSnap.data();
+                    updateUIFromState(gameState);
                 }
             });
         }
 
-        // =========================================================================
-        // 📺 TV DISPLAY LOGIC
-        // =========================================================================
-        function initTVDisplay() {
-            const currentUrl = window.location.origin + window.location.pathname + '?mode=player';
-            document.getElementById('tv-join-url').innerText = window.location.host;
-            
-            // Generate QR Code
-            const qrContainer = document.getElementById('tv-qr');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-                text: currentUrl,
-                width: 90,
-                height: 90
-            });
+        async function updateGameState(newState) {
+            const { db, doc, setDoc } = window.FB;
+            await setDoc(doc(db, "games", GAME_ID), newState, { merge: true });
         }
 
-        function updateTVScreen(gameData) {
-            const badge = document.getElementById('tv-status-badge');
-            const overlay = document.getElementById('tv-overlay');
-            const overlayTitle = document.getElementById('tv-overlay-title');
-            const roundNum = document.getElementById('tv-round-num');
-            
-            roundNum.innerText = gameData.round || 1;
+        // --- HOST ACTIONS ---
+        function addDeckImage() {
+            const fileInput = document.getElementById('host-img-file');
+            const ansInput = document.getElementById('host-ans-input');
+            const answer = ansInput.value.trim();
 
-            if (gameData.status === 'reveal') {
-                badge.innerText = 'Revealing Image';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse';
-                overlay.classList.add('hidden');
-                
-                // Start Canvas Unblur Animation
-                startUnblurCanvas('tv-canvas', gameData.imageUrl, gameData.startTime);
-            } else if (gameData.status === 'finale') {
-                document.getElementById('tv-live-screen').classList.add('hidden');
-                document.getElementById('tv-finale-screen').classList.remove('hidden');
-                renderFinaleScreen(gameData);
-            } else {
-                badge.innerText = 'Waiting';
-                badge.className = 'px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 border border-amber-500/30';
-                overlay.classList.remove('hidden');
-                overlayTitle.innerText = `Waiting for Host to start Round ${gameData.round || 1}`;
-            }
-        }
-
-        function renderTVSubmissions(subs) {
-            const list = document.getElementById('tv-submissions-list');
-            if (!list) return;
-
-            if (subs.length === 0) {
-                list.innerHTML = `<p class="text-slate-500 italic text-sm col-span-full">No guesses submitted yet this round...</p>`;
+            if (!fileInput.files[0] || !answer) {
+                alert('Please select an image file and enter a correct answer key.');
                 return;
             }
 
-            list.innerHTML = subs.map(s => `
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-sm shadow-sm">
-                    <div class="truncate pr-2">
-                        <span class="font-bold text-pink-400 block">${escapeHtml(s.playerName)}</span>
-                        <span class="text-slate-200 font-medium">"${escapeHtml(s.answer)}"</span>
-                    </div>
-                    <span class="text-amber-400 font-mono text-xs font-bold bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
-                        ${(s.timeMs / 1000).toFixed(2)}s
-                    </span>
-                </div>
-            `).join('');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                deckImages.push({ imageSrc: e.target.result, answer: answer });
+                ansInput.value = '';
+                fileInput.value = '';
+                document.getElementById('deck-count').innerText = deckImages.length;
+                document.getElementById('deck-round-num').innerText = Math.min(deckImages.length + 1, 10);
+                
+                let listHTML = '';
+                deckImages.forEach((img, idx) => {
+                    listHTML += `<div class="bg-slate-950 p-2 rounded-lg flex justify-between"><span>#${idx+1}: Answer: <b>${img.answer}</b></span></div>`;
+                });
+                document.getElementById('deck-list').innerHTML = listHTML;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
         }
 
-        // Canvas Sync Animation Engine
-        function startUnblurCanvas(canvasId, imgSrc, startTime) {
+        async function startNextRound() {
+            if (deckImages.length === 0) {
+                alert('Please add at least one image to the deck first!');
+                return;
+            }
+
+            const currentState = (await window.FB.getDoc(window.FB.doc(window.FB.db, "games", GAME_ID))).data() || { roundIndex: -1 };
+            const nextRoundIdx = (currentState.roundIndex ?? -1) + 1;
+
+            if (nextRoundIdx >= deckImages.length) {
+                alert('All rounds completed! Check the TV for the grand finale recap.');
+                await updateGameState({ status: 'finale' });
+                return;
+            }
+
+            await updateGameState({
+                status: 'revealing',
+                roundIndex: nextRoundIdx,
+                currentImage: deckImages[nextRoundIdx].imageSrc,
+                correctAnswer: deckImages[nextRoundIdx].answer,
+                startTime: Date.now(),
+                submissions: []
+            });
+            alert(`Round ${nextRoundIdx + 1} started!`);
+        }
+
+        async function gradeSubmission(playerName, isCorrect) {
+            const docSnap = await window.FB.getDoc(window.FB.doc(window.FB.db, "games", GAME_ID));
+            const state = docSnap.data();
+            let submissions = state.submissions || [];
+
+            let winnerFound = false;
+            submissions.forEach(sub => {
+                if (sub.playerName === playerName) {
+                    sub.correct = isCorrect;
+                    if (isCorrect && !sub.awarded && !winnerFound) {
+                        sub.awarded = true;
+                        winnerFound = true;
+                        sub.points = 100; // Fastest correct gets 100 pts
+                    } else {
+                        sub.points = 0;
+                    }
+                }
+            });
+
+            await updateGameState({ submissions: submissions });
+        }
+
+        async function nextRound() {
+            await startNextRound();
+        }
+
+        async function resetGameSession() {
+            await updateGameState({
+                status: 'waiting',
+                roundIndex: -1,
+                currentImage: '',
+                correctAnswer: '',
+                startTime: 0,
+                submissions: [],
+                players: {}
+            });
+            alert('Game session reset.');
+        }
+
+        // --- PLAYER ACTIONS ---
+        async function joinGame() {
+            playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) return alert('Please enter your name.');
+
+            document.getElementById('player-join').classList.add('hidden');
+            document.getElementById('player-game').classList.add('block');
+            document.getElementById('player-display-name').innerText = playerName;
+
+            const docRef = window.FB.doc(window.FB.db, "games", GAME_ID);
+            const docSnap = await window.FB.getDoc(docRef);
+            let players = docSnap.exists() ? (docSnap.data().players || {}) : {};
+            players[playerName] = { score: 0 };
+
+            await updateGameState({ players: players });
+        }
+
+        async function submitAnswer() {
+            const answerInput = document.getElementById('player-answer');
+            const answer = answerInput.value.trim();
+            if (!answer) return alert('Type your answer first!');
+
+            const docSnap = await window.FB.getDoc(window.FB.doc(window.FB.db, "games", GAME_ID));
+            const state = docSnap.data();
+            const timeMs = Date.now() - state.startTime;
+
+            answerInput.value = '';
+            document.getElementById('submit-btn').disabled = true;
+
+            const newSub = {
+                playerName: playerName,
+                answer: answer,
+                timeMs: timeMs,
+                correct: null,
+                awarded: false,
+                points: 0
+            };
+
+            const updatedSubmissions = [...(state.submissions || []), newSub];
+            await updateGameState({ submissions: updatedSubmissions });
+            alert('Answer submitted! Check TV screen.');
+        }
+
+        // --- UI RENDERER FROM STATE ---
+        function updateUIFromState(state) {
+            // Update Player Count & Leaderboard on TV
+            if (state.players) {
+                const count = Object.keys(state.players).length;
+                document.getElementById('tv-player-count').innerText = count + ' Players Connected';
+                
+                // Calculate scores
+                let topScoresHTML = '';
+                let sortedPlayers = Object.entries(state.players).sort((a,b) => b[1].score - a[1].score);
+                if (sortedPlayers.length > 0) {
+                    topScoresHTML = sortedPlayers.slice(0,3).map(([name, data], idx) => `#${idx+1} ${name} (${data.score}pts)`).join(', ');
+                }
+                document.getElementById('tv-top-scores').innerText = topScoresHTML || 'No scores yet';
+
+                if (playerName && state.players[playerName]) {
+                    myScore = state.players[playerName].score;
+                    document.getElementById('player-score-badge').innerText = `Score: ${myScore} pts`;
+                }
+            }
+
+            // TV & Player Canvas Animation
+            if (state.status === 'revealing' && state.startTime) {
+                document.getElementById('tv-status-overlay').classList.add('hidden');
+                document.getElementById('tv-round-title').innerText = `Round ${(state.roundIndex || 0) + 1} in Progress!`;
+                startCanvasAnimation(state.currentImage, state.startTime, 'tv-canvas');
+                startCanvasAnimation(state.currentImage, state.startTime, 'player-canvas');
+                document.getElementById('submit-btn').disabled = false;
+            }
+
+            // Host Submissions Render
+            if (currentMode === 'host' && state.submissions) {
+                document.getElementById('host-current-round').innerText = (state.roundIndex || 0) + 1;
+                let subHTML = '';
+                state.submissions.forEach((sub) => {
+                    subHTML += `<div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-pink-400">${sub.playerName}</span>: "${sub.answer}" 
+                            <span class="text-amber-400 font-mono">(${(sub.timeMs/1000).toFixed(2)}s)</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="gradeSubmission('${sub.playerName}', true)" class="px-2 py-1 bg-emerald-600 rounded text-white font-bold">Correct</button>
+                            <button onclick="gradeSubmission('${sub.playerName}', false)" class="px-2 py-1 bg-rose-600 rounded text-white font-bold">Wrong</button>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('host-submissions-list').innerHTML = subHTML || '<p class="text-slate-500 italic text-sm">Waiting for submissions...</p>';
+            }
+
+            // Grand Finale Recap
+            if (state.status === 'finale') {
+                document.getElementById('view-tv').classList.remove('hidden');
+                document.getElementById('tv-status-overlay').classList.add('hidden');
+                document.getElementById('tv-finale').classList.remove('hidden');
+                // Render Podium
+                let sorted = Object.entries(state.players || {}).sort((a,b) => b[1].score - a[1].score);
+                let podiumHTML = '';
+                sorted.slice(0, 3).forEach(([name, data], idx) => {
+                    podiumHTML += `<div class="bg-slate-950 p-4 rounded-xl border border-slate-800"><h4 class="text-xl font-bold text-amber-400">#${idx+1} ${name}</h4><p class="text-sm text-slate-300">${data.score} Points</p></div>`;
+                });
+                document.getElementById('tv-finale-podium').innerHTML = podiumHTML || '<p>No players scored points.</p>';
+            }
+        }
+
+        function startCanvasAnimation(imgSrc, startTime, canvasId) {
             const canvas = document.getElementById(canvasId);
-            if (!canvas || !imgSrc) return;
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.src = imgSrc;
-
             img.onload = () => {
                 canvas.width = img.width;
                 canvas.height = img.height;
-
-                if (window.appState.animationTimer) clearInterval(window.appState.animationTimer);
-
-                window.appState.animationTimer = setInterval(() => {
-                    const elapsed = Date.now() - (startTime || Date.now());
-                    const progress = Math.min(elapsed / window.appState.unblurDuration, 1);
-                    const blurAmount = Math.max(30 * (1 - progress), 0);
-
-                    ctx.filter = `blur(${blurAmount}px)`;
+                let timer = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    let progress = Math.min(elapsed / unblurDuration, 1);
+                    let blur = Math.max(30 * (1 - progress), 0);
+                    ctx.filter = `blur(${blur}px)`;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0);
-
-                    if (progress >= 1) clearInterval(window.appState.animationTimer);
-                }, 40);
+                    if (progress >= 1) clearInterval(timer);
+                }, 50);
             };
         }
-
-        // =========================================================================
-        // 👑 HOST CONTROL PANEL LOGIC
-        // =========================================================================
-        function initHostPanel() {
-            renderDeckInputs();
-            fetchDeckFromFirebase();
-        }
-
-        window.toggleDeckBuilder = function() {
-            const panel = document.getElementById('host-deck-builder');
-            panel.classList.toggle('hidden');
-        };
-
-        function renderDeckInputs() {
-            const container = document.getElementById('deck-inputs-container');
-            container.innerHTML = Array.from({ length: 10 }).map((_, i) => `
-                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-                    <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-                        <span>Round ${i + 1} Image Card</span>
-                        <input type="file" id="file-upload-${i}" accept="image/*" class="hidden" onchange="handleImageUpload(event, ${i})">
-                        <button onclick="document.getElementById('file-upload-${i}').click()" class="text-purple-400 hover:text-purple-300">📁 Upload Custom</button>
-                    </div>
-                    <input type="text" id="deck-url-${i}" placeholder="Image URL" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="deck-ans-${i}" placeholder="Answer Key" class="col-span-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                        <input type="number" id="deck-pts-${i}" value="100" placeholder="Points" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-400 font-mono">
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        window.handleImageUpload = function(e, index) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    document.getElementById(`deck-url-${index}`).value = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        window.loadSampleDeck = function() {
-            SAMPLE_DECK.forEach((item, i) => {
-                document.getElementById(`deck-url-${i}`).value = item.url;
-                document.getElementById(`deck-ans-${i}`).value = item.answer;
-                document.getElementById(`deck-pts-${i}`).value = item.points;
-            });
-            alert("Loaded 10 Sample Images into Deck Builder!");
-        };
-
-        window.saveDeckToFirebase = async function() {
-            const deck = [];
-            for (let i = 0; i < 10; i++) {
-                const url = document.getElementById(`deck-url-${i}`).value || SAMPLE_DECK[i].url;
-                const answer = document.getElementById(`deck-ans-${i}`).value || SAMPLE_DECK[i].answer;
-                const points = parseInt(document.getElementById(`deck-pts-${i}`).value) || 100;
-                deck.push({ round: i + 1, url, answer, points });
-            }
-            window.appState.deck = deck;
-
-            await setDoc(doc(db, "game", "deck"), { items: deck });
-            alert("Quiz Deck successfully saved to Firebase!");
-            updateHostCardPreview();
-        };
-
-        async function fetchDeckFromFirebase() {
-            const snap = await getDoc(doc(db, "game", "deck"));
-            if (snap.exists()) {
-                window.appState.deck = snap.data().items || [];
-                window.appState.deck.forEach((item, i) => {
-                    if (document.getElementById(`deck-url-${i}`)) {
-                        document.getElementById(`deck-url-${i}`).value = item.url;
-                        document.getElementById(`deck-ans-${i}`).value = item.answer;
-                        document.getElementById(`deck-pts-${i}`).value = item.points;
-                    }
-                });
-            } else {
-                window.appState.deck = SAMPLE_DECK;
-            }
-            updateHostCardPreview();
-        }
-
-        function updateHostCardPreview() {
-            const r = window.appState.currentRound - 1;
-            const current = window.appState.deck[r] || SAMPLE_DECK[r];
-
-            if (current) {
-                const img = document.getElementById('host-current-preview');
-                img.src = current.url;
-                img.classList.remove('hidden');
-                document.getElementById('host-no-img-text').classList.add('hidden');
-                document.getElementById('host-current-answer').innerText = current.answer;
-                document.getElementById('host-current-points').innerText = `${current.points} pts`;
-            }
-        }
-
-        window.startHostRound = async function() {
-            const r = window.appState.currentRound - 1;
-            const current = window.appState.deck[r] || SAMPLE_DECK[r];
-
-            // Clear old round submissions
-            const subSnaps = await getDocs(collection(db, "submissions"));
-            subSnaps.forEach(async (sDoc) => await deleteDoc(doc(db, "submissions", sDoc.id)));
-
-            // Trigger Start Doc Update
-            await setDoc(doc(db, "game", "current"), {
-                status: 'reveal',
-                round: window.appState.currentRound,
-                imageUrl: current.url,
-                answerKey: current.answer,
-                points: current.points,
-                startTime: Date.now()
-            });
-        };
-
-        window.nextHostRound = function() {
-            if (window.appState.currentRound < 10) {
-                window.appState.currentRound++;
-                updateHostCardPreview();
-            }
-        };
-
-        window.prevHostRound = function() {
-            if (window.appState.currentRound > 1) {
-                window.appState.currentRound--;
-                updateHostCardPreview();
-            }
-        };
-
-        function renderHostSubmissions(subs) {
-            const list = document.getElementById('host-submissions-list');
-            if (!list) return;
-
-            if (subs.length === 0) {
-                list.innerHTML = `<p class="text-slate-500 italic text-sm">Waiting for submissions...</p>`;
-                return;
-            }
-
-            list.innerHTML = subs.map((s, idx) => `
-                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-between items-center space-x-4">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="font-extrabold text-pink-400 text-sm">${escapeHtml(s.playerName)}</span>
-                            <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${(s.timeMs / 1000).toFixed(2)}s</span>
-                            ${idx === 0 ? '<span class="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">Fastest</span>' : ''}
-                        </div>
-                        <p class="text-white font-bold text-base mt-1">"${escapeHtml(s.answer)}"</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="gradeSubmission('${s.id}', '${s.playerName}', true)" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition">Correct ✅</button>
-                        <button onclick="gradeSubmission('${s.id}', '${s.playerName}', false)" class="px-3 py-2 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs rounded-xl transition">Wrong ❌</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        window.gradeSubmission = async function(subId, playerName, isCorrect) {
-            if (isCorrect) {
-                const r = window.appState.currentRound - 1;
-                const current = window.appState.deck[r] || SAMPLE_DECK[r];
-                const points = current.points || 100;
-
-                // Update Leaderboard
-                const lbRef = doc(db, "game", "leaderboard");
-                const lbSnap = await getDoc(lbRef);
-                const lbData = lbSnap.exists() ? lbSnap.data() : {};
-                
-                lbData[playerName] = (lbData[playerName] || 0) + points;
-                await setDoc(lbRef, lbData);
-
-                // Save Round Winner
-                await setDoc(doc(db, "recap", `round_${window.appState.currentRound}`), {
-                    round: window.appState.currentRound,
-                    winner: playerName,
-                    answer: current.answer,
-                    imageUrl: current.url
-                });
-
-                alert(`Awarded ${points} points to ${playerName}!`);
-            }
-            await deleteDoc(doc(db, "submissions", subId));
-        };
-
-        window.triggerGrandFinale = async function() {
-            await updateDoc(doc(db, "game", "current"), { status: 'finale' });
-        };
-
-        window.resetWholeGame = async function() {
-            if (confirm("Reset game state and leaderboards for a new game night?")) {
-                await setDoc(doc(db, "game", "current"), { status: 'idle', round: 1 });
-                await setDoc(doc(db, "game", "leaderboard"), {});
-                location.reload();
-            }
-        };
-
-        // =========================================================================
-        // 📱 MOBILE PLAYER CONTROLLER LOGIC
-        // =========================================================================
-        window.registerPlayer = function(e) {
-            e.preventDefault();
-            const name = document.getElementById('player-name-input').value.trim();
-            if (!name) return;
-
-            window.appState.playerName = name;
-            document.getElementById('player-register-card').classList.add('hidden');
-            document.getElementById('player-game-card').classList.remove('hidden');
-            document.getElementById('player-display-name').innerText = name;
-        };
-
-        function updatePlayerScreen(gameData) {
-            const overlay = document.getElementById('player-canvas-overlay');
-            const overlayMsg = document.getElementById('player-overlay-msg');
-            const btn = document.getElementById('btn-submit-guess');
-
-            if (gameData.status === 'reveal') {
-                overlay.classList.add('hidden');
-                btn.disabled = false;
-                btn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-black text-lg rounded-2xl transition text-white shadow-lg shadow-emerald-600/30";
-                
-                startUnblurCanvas('player-canvas', gameData.imageUrl, gameData.startTime);
-            } else {
-                overlay.classList.remove('hidden');
-                overlayMsg.innerText = `Waiting for Host to start Round ${gameData.round || 1}...`;
-            }
-        }
-
-        window.submitPlayerGuess = async function() {
-            const input = document.getElementById('player-guess-input');
-            const guess = input.value.trim();
-            if (!guess || !window.appState.playerName) return;
-
-            const btn = document.getElementById('btn-submit-guess');
-            btn.disabled = true;
-            btn.className = "w-full py-4 bg-slate-800 text-slate-500 font-bold text-lg rounded-2xl cursor-not-allowed";
-
-            const gameSnap = await getDoc(doc(db, "game", "current"));
-            const startTime = gameSnap.exists() ? (gameSnap.data().startTime || Date.now()) : Date.now();
-            const timeMs = Date.now() - startTime;
-
-            await setDoc(doc(collection(db, "submissions")), {
-                playerName: window.appState.playerName,
-                answer: guess,
-                timeMs: timeMs,
-                timestamp: Date.now()
-            });
-
-            const feedback = document.getElementById('player-feedback');
-            feedback.innerText = "Guess Submitted! Speed: " + (timeMs / 1000).toFixed(2) + "s";
-            feedback.className = "p-3 rounded-xl text-center text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 block";
-            input.value = '';
-        };
-
-        // =========================================================================
-        // 🏆 FINALE & LEADERBOARD RECAP
-        // =========================================================================
-        function renderLeaderboards() {
-            const lb = window.appState.leaderboard;
-            if (window.appState.playerName && lb[window.appState.playerName] !== undefined) {
-                document.getElementById('player-display-score').innerText = `${lb[window.appState.playerName]} pts`;
-            }
-        }
-
-        async function renderFinaleScreen(gameData) {
-            // Fetch Leaderboard
-            const lbSnap = await getDoc(doc(db, "game", "leaderboard"));
-            const lb = lbSnap.exists() ? lbSnap.data() : {};
-
-            const sorted = Object.entries(lb).sort((a, b) => b[1] - a[1]);
-
-            if (sorted[0]) {
-                document.getElementById('podium-1-name').innerText = sorted[0][0];
-                document.getElementById('podium-1-score').innerText = `${sorted[0][1]} pts`;
-            }
-            if (sorted[1]) {
-                document.getElementById('podium-2-name').innerText = sorted[1][0];
-                document.getElementById('podium-2-score').innerText = `${sorted[1][1]} pts`;
-            }
-            if (sorted[2]) {
-                document.getElementById('podium-3-name').innerText = sorted[2][0];
-                document.getElementById('podium-3-score').innerText = `${sorted[2][1]} pts`;
-            }
-
-            // Fetch 10-round recaps
-            const grid = document.getElementById('tv-recap-grid');
-            const recaps = [];
-            for (let i = 1; i <= 10; i++) {
-                const rSnap = await getDoc(doc(db, "recap", `round_${i}`));
-                if (rSnap.exists()) recaps.push(rSnap.data());
-                else recaps.push({ round: i, answer: 'N/A', winner: 'None', imageUrl: 'https://placehold.co/400x300/1e293b/94a3b8?text=Round+' + i });
-            }
-
-            grid.innerHTML = recaps.map(r => `
-                <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-2">
-                    <img src="${r.imageUrl}" class="w-full aspect-video object-cover rounded-xl border border-slate-800">
-                    <div class="text-xs">
-                        <span class="text-slate-500 block">Round ${r.round}</span>
-                        <span class="font-bold text-white block truncate">${r.answer}</span>
-                        <span class="text-emerald-400 font-semibold block truncate">👑 ${r.winner}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Helper: Escape HTML
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        // =========================================================================
-        // 🚀 BOOTSTRAP APP ON LOAD
-        // =========================================================================
-        window.addEventListener('DOMContentLoaded', () => {
-            setupFirestoreListeners();
-
-            // Detect URL Mode
-            const params = new URLSearchParams(window.location.search);
-            const mode = params.get('mode');
-            if (mode) {
-                window.switchMode(mode);
-            } else {
-                window.switchMode('select');
-            }
-        });
     </script>
 </body>
 </html>
