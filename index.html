@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blur Reveal Trivia - TV Quiz Night</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Font: Inter & Orbitron -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif'],
+          },
+          animation: {
+            'pulse-glow': 'pulseGlow 2s infinite',
+            'bounce-subtle': 'bounceSubtle 1s infinite',
+          },
+          keyframes: {
+            pulseGlow: {
+              '0%, 100%': { boxShadow: '0 0 15px rgba(79, 70, 229, 0.4)' },
+              '50%': { boxShadow: '0 0 30px rgba(79, 70, 229, 0.8)' },
+            },
+            bounceSubtle: {
+              '0%, 100%': { transform: 'translateY(-2%)' },
+              '50%': { transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* High contrast TV optimization */
+    .blur-image {
+      transition: filter 0.1s linear, transform 0.1s linear;
+      will-change: filter, transform;
+    }
+    
+    .tv-scanlines::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
+      background-size: 100% 4px;
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    /* Scrollbars for host modal */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body class="h-full flex flex-col justify-between select-none overflow-hidden font-sans bg-slate-950 text-slate-100 tv-scanlines">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="w-full px-6 py-4 glass-panel border-b border-slate-800 z-20 flex items-center justify-between shadow-2xl">
+    <!-- Title & Branding -->
+    <div class="flex items-center gap-3">
+      <div class="bg-gradient-to-tr from-indigo-600 to-purple-500 p-3 rounded-2xl shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-eye text-2xl text-white"></i>
+      </div>
+      <div>
+        <h1 class="font-display font-extrabold text-xl lg:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">
+          FOCUS REVEAL
+        </h1>
+        <p class="text-xs text-slate-400 font-semibold tracking-widest uppercase">Big Screen Quiz Night</p>
+      </div>
+    </div>
+
+    <!-- Center Indicator: Question Tracker & Category -->
+    <div class="flex items-center gap-4">
+      <span id="categoryBadge" class="hidden sm:inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-950/80 text-indigo-300 border border-indigo-700/50 shadow-inner">
+        Category
+      </span>
+      <div class="glass-panel px-5 py-2 rounded-2xl flex items-center gap-2 border border-slate-700/60 shadow-md">
+        <i class="fa-solid fa-list-check text-indigo-400"></i>
+        <span class="text-xs md:text-sm font-semibold text-slate-400">QUESTION</span>
+        <span id="questionCounter" class="font-display font-bold text-2xl text-amber-400 ml-1">1/10</span>
+      </div>
+    </div>
+
+    <!-- Right Controls: Edit Answers, Mute, Fullscreen -->
+    <div class="flex items-center gap-3">
+      <!-- Edit Answers Modal Trigger -->
+      <button id="openEditorBtn" title="Edit Host Answers for Session" class="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-all border border-slate-700 shadow flex items-center gap-2 text-sm font-bold">
+        <i class="fa-solid fa-[#fa5252] fa-pen-to-square text-amber-400"></i>
+        <span class="hidden md:inline">Edit Answers</span>
+      </button>
+
+      <!-- Audio Mute Toggle -->
+      <button id="audioBtn" title="Mute/Unmute Sound Effects" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 shadow">
+        <i id="audioIcon" class="fa-solid fa-volume-high text-indigo-400 text-lg"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button id="fullscreenBtn" title="Toggle TV Fullscreen" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 shadow">
+        <i class="fa-solid fa-expand text-slate-300 text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN DISPLAY AREA ================= -->
+  <main class="relative flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col justify-center items-center z-10 overflow-hidden">
+    
+    <!-- Question Prompt Banner -->
+    <div class="w-full text-center mb-3">
+      <h2 id="questionPrompt" class="text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-100 tracking-wide drop-shadow-md">
+        Loading Question...
+      </h2>
+    </div>
+
+    <!-- Central Image Frame -->
+    <div id="mediaFrame" class="relative w-full max-w-4xl h-[420px] md:h-[480px] lg:h-[520px] rounded-3xl overflow-hidden glass-panel border-2 border-slate-700/60 shadow-2xl flex items-center justify-center">
+      
+      <!-- Image Canvas Container -->
+      <img id="quizImage" 
+           src="" 
+           alt="Trivia Question Image" 
+           class="blur-image w-full h-full object-cover rounded-2xl select-none"
+           style="filter: blur(50px) brightness(0.5) contrast(1.1); transform: scale(1.08);" />
+
+      <!-- Top Progress Overlay Bar -->
+      <div class="absolute top-0 left-0 w-full h-2 bg-slate-900/80 z-20">
+        <div id="progressBar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 w-0 transition-all duration-100 shadow-lg"></div>
+      </div>
+
+      <!-- Live Status Badge -->
+      <div id="blurStatusBadge" class="absolute top-5 right-5 z-20 glass-panel px-4 py-2 rounded-2xl flex items-center gap-3 border border-slate-600/50 shadow-xl">
+        <div class="relative flex items-center justify-center">
+          <span id="spinner" class="animate-spin h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full hidden"></span>
+          <i id="badgeIcon" class="fa-solid fa-clock text-amber-400 text-sm"></i>
+        </div>
+        <span id="timerText" class="font-display font-bold text-lg text-slate-200">READY</span>
+      </div>
+
+      <!-- High-Contrast Answer Banner -->
+      <div id="answerCard" class="hidden absolute inset-x-4 bottom-4 md:inset-x-8 md:bottom-6 z-30 glass-panel bg-slate-950/95 border-2 border-amber-500/80 p-5 md:p-6 rounded-2xl shadow-2xl backdrop-blur-xl animate-bounce-subtle">
+        <div class="flex items-start justify-between gap-4">
+          <div class="w-full">
+            <span class="inline-block px-3 py-1 rounded-md bg-amber-500/20 text-amber-300 font-extrabold text-xs uppercase tracking-widest mb-1.5 border border-amber-500/40">
+              <i class="fa-solid fa-trophy mr-1"></i> Correct Answer
+            </span>
+            <h3 id="answerTitle" class="text-2xl md:text-4xl font-black text-white font-display tracking-wide text-amber-400">
+              Answer Title
+            </h3>
+            <p id="answerTrivia" class="text-sm md:text-base text-slate-200 mt-2 font-medium leading-relaxed bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              Trivia details and background information will appear here.
+            </p>
+          </div>
+          <div class="hidden sm:flex p-4 bg-amber-500/10 rounded-2xl border border-amber-500/30 text-amber-400 items-center justify-center shrink-0">
+            <i class="fa-solid fa-check-double text-4xl"></i>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= BOTTOM TV CONTROL PANEL ================= -->
+  <footer class="w-full px-6 py-4 glass-panel border-t border-slate-800 z-20 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Left: Navigation & Speed Preset Controls -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+        <button id="prevBtn" title="Previous Question [Left Arrow]" class="px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold transition-all border border-slate-700 flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+          <i class="fa-solid fa-chevron-left text-indigo-400"></i>
+          <span>Prev</span>
+        </button>
+
+        <!-- Unblur Timer Speed Selector -->
+        <div class="flex items-center bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
+          <span class="text-xs font-bold text-slate-400 px-2 hidden lg:inline">SPEED:</span>
+          <button data-speed="10" class="speed-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">10s</button>
+          <button data-speed="20" class="speed-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow shadow-indigo-500/30 transition-all">20s</button>
+          <button data-speed="30" class="speed-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all">30s</button>
+        </div>
+
+        <button id="nextBtn" title="Next Question [Right Arrow]" class="px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold transition-all border border-slate-700 flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+          <span>Next</span>
+          <i class="fa-solid fa-chevron-right text-indigo-400"></i>
+        </button>
+      </div>
+
+      <!-- Center / Right: Primary Action Buttons -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-center flex-wrap">
+        
+        <!-- Start / Pause Toggle Button -->
+        <button id="startPauseBtn" class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-base tracking-wide shadow-xl shadow-indigo-600/30 border border-indigo-400/30 transition-all transform active:scale-95 flex items-center gap-2.5 animate-pulse-glow">
+          <i id="startPauseIcon" class="fa-solid fa-play text-lg"></i>
+          <span id="startPauseLabel">START REVEAL</span>
+        </button>
+
+        <!-- Prominent Reveal Answer Button -->
+        <button id="revealAnswerBtn" title="Instantly Reveal Answer On Screen [Key R]" class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-base tracking-wider shadow-xl shadow-amber-500/25 border border-amber-300 transition-all transform active:scale-95 flex items-center gap-2.5">
+          <i class="fa-solid fa-bullhorn text-slate-950 text-lg"></i>
+          <span>REVEAL ANSWER</span>
+        </button>
+
+        <!-- Reset Image Button -->
+        <button id="resetBtn" title="Reset Blur Level" class="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 shadow-md active:scale-95">
+          <i class="fa-solid fa-rotate-right text-base"></i>
+        </button>
+
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ================= HOST EDIT ANSWERS MODAL ================= -->
+  <div id="editorModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 md:p-6">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <i class="fa-solid fa-pen-to-square text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-white">Host Answer Manager</h3>
+            <p class="text-xs text-slate-400">Modify answers for this session. Changes are saved locally.</p>
+          </div>
+        </div>
+        <button id="closeEditorBtn" class="p-2 text-slate-400 hover:text-white transition-all">
+          <i class="fa-solid fa-xmark text-2xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Answer Form Fields) -->
+      <div class="p-6 flex-1 overflow-y-auto space-y-4">
+        
+        <div id="answersListContainer" class="space-y-3">
+          <!-- Dynamically populated via JS -->
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
+        <button id="resetDefaultsBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded-xl text-xs font-bold transition-all border border-slate-700">
+          Reset to Default Answers
+        </button>
+        <button id="saveAndApplyBtn" class="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg transition-all">
+          Save Answers for Session
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Screen Notification Toast -->
+  <div id="toast" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl bg-slate-900/95 border border-amber-500/50 text-amber-300 font-bold text-sm shadow-2xl backdrop-blur-md"></div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // --- 10 HARDCODED TRIVIA QUESTIONS ---
+    // Images use local Git directory paths (e.g. images/q1.jpg) with high quality Unsplash fallbacks
+    const defaultQuestions = [
+      {
+        id: 1,
+        category: "World Landmarks",
+        prompt: "Can you identify this famous world landmark?",
+        imageUrl: "images/q1.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1543731068-7e0f5beff43a?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Taj Mahal, India",
+        trivia: "Built between 1631 and 1648 by Mughal emperor Shah Jahan in memory of his favorite wife, Mumtaz Mahal."
+      },
+      {
+        id: 2,
+        category: "Close-up Objects",
+        prompt: "What everyday object is shown in this macro photo?",
+        imageUrl: "images/q2.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Pill Capsules / Medicine",
+        trivia: "Gelatin capsules were patented in 1834 to enclose bad-tasting liquid medicines."
+      },
+      {
+        id: 3,
+        category: "Nature & Wildlife",
+        prompt: "Which magnificent wild animal is hiding behind the blur?",
+        imageUrl: "images/q3.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1534188753412-3e26d0d618d6?w=1200&auto=format&fit=crop",
+        defaultAnswer: "African Lion",
+        trivia: "A lion's roar can be heard from up to 5 miles (8 kilometers) away!"
+      },
+      {
+        id: 4,
+        category: "Food & Dessert",
+        prompt: "Can you recognize this world-famous sweet dessert?",
+        imageUrl: "images/q4.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Strawberry Cheesecake",
+        trivia: "An early form of cheesecake was served to athletes during the first Olympic Games in 776 BC."
+      },
+      {
+        id: 5,
+        category: "Pop Culture & Cinema",
+        prompt: "Which iconic movie character is shown here?",
+        imageUrl: "images/q5.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Stormtrooper (Star Wars)",
+        trivia: "The original white armor suits were created using vacuum-formed ABS plastic."
+      },
+      {
+        id: 6,
+        category: "Famous Art",
+        prompt: "Who painted this world-renowned artwork?",
+        imageUrl: "images/q6.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Vincent van Gogh",
+        trivia: "Van Gogh created over 2,000 artworks in one decade, including 35 self-portraits."
+      },
+      {
+        id: 7,
+        category: "Macro Nature",
+        prompt: "What delicate creature is depicted in this zoomed view?",
+        imageUrl: "images/q7.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Monarch Butterfly",
+        trivia: "Monarch butterflies migrate up to 3,000 miles every autumn from Canada to Mexico."
+      },
+      {
+        id: 8,
+        category: "World Architecture",
+        prompt: "In which European capital city is this iconic structure?",
+        imageUrl: "images/q8.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Eiffel Tower, Paris",
+        trivia: "Constructed for the 1889 World's Fair, it stands 330 meters tall."
+      },
+      {
+        id: 9,
+        category: "Automotive",
+        prompt: "What legendary vintage sports car model is this?",
+        imageUrl: "images/q9.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Porsche 911",
+        trivia: "First introduced in 1963, it remains one of the longest continuously produced sports cars."
+      },
+      {
+        id: 10,
+        category: "Space & Science",
+        prompt: "Which celestial body is captured in this deep space image?",
+        imageUrl: "images/q10.jpg",
+        fallbackUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop",
+        defaultAnswer: "Planet Earth",
+        trivia: "Earth is the only known planet in the solar system not named after a Greek or Roman deity."
+      }
+    ];
+
+    // Load custom host edited answers from localStorage or default
+    let customAnswers = JSON.parse(localStorage.getItem('quizSessionAnswers')) || defaultQuestions.map(q => q.defaultAnswer);
+
+    // --- GAME STATE ---
+    let currentIndex = 0;
+    let revealDuration = 20; // Default seconds
+    let initialBlur = 50; // Starting max blur in px
+    let currentBlur = initialBlur;
+    let isRunning = false;
+    let isRevealed = false;
+    let audioMuted = false;
+    
+    let animationFrameId = null;
+    let startTime = null;
+    let pausedTimeElapsed = 0;
+
+    // --- DOM ELEMENTS ---
+    const quizImage = document.getElementById('quizImage');
+    const questionCounter = document.getElementById('questionCounter');
+    const categoryBadge = document.getElementById('categoryBadge');
+    const questionPrompt = document.getElementById('questionPrompt');
+    const timerText = document.getElementById('timerText');
+    const progressBar = document.getElementById('progressBar');
+    const answerCard = document.getElementById('answerCard');
+    const answerTitle = document.getElementById('answerTitle');
+    const answerTrivia = document.getElementById('answerTrivia');
+
+    const startPauseBtn = document.getElementById('startPauseBtn');
+    const startPauseIcon = document.getElementById('startPauseIcon');
+    const startPauseLabel = document.getElementById('startPauseLabel');
+    const revealAnswerBtn = document.getElementById('revealAnswerBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const speedBtns = document.querySelectorAll('.speed-btn');
+    const audioBtn = document.getElementById('audioBtn');
+    const audioIcon = document.getElementById('audioIcon');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const badgeIcon = document.getElementById('badgeIcon');
+    const spinner = document.getElementById('spinner');
+
+    // Host Editor Modal Elements
+    const editorModal = document.getElementById('editorModal');
+    const openEditorBtn = document.getElementById('openEditorBtn');
+    const closeEditorBtn = document.getElementById('closeEditorBtn');
+    const answersListContainer = document.getElementById('answersListContainer');
+    const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+    const saveAndApplyBtn = document.getElementById('saveAndApplyBtn');
+
+    // --- WEB AUDIO SYNTHESIZER ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (audioMuted) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        if (type === 'tick') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } else if (type === 'start') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.2);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } else if (type === 'pause') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(280, now);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'reveal') {
+          // Play fanfare chord chime
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.4);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.4);
+          });
+        }
+      } catch (e) {
+        console.warn("Audio Context Error", e);
+      }
+    }
+
+    // --- GAME ENGINE LOGIC ---
+    function loadQuestion(index) {
+      if (defaultQuestions.length === 0) return;
+      stopAnimation();
+      
+      currentIndex = index;
+      const q = defaultQuestions[currentIndex];
+      const activeAnswer = customAnswers[currentIndex] || q.defaultAnswer;
+
+      // Update Top Status Bar
+      questionCounter.textContent = `${currentIndex + 1}/${defaultQuestions.length}`;
+      categoryBadge.textContent = q.category;
+      questionPrompt.textContent = q.prompt;
+
+      // Update Answer Card
+      answerTitle.textContent = activeAnswer;
+      answerTrivia.textContent = q.trivia;
+
+      // Reset Blur & Control States
+      currentBlur = initialBlur;
+      pausedTimeElapsed = 0;
+      isRevealed = false;
+      isRunning = false;
+
+      updateBlurVisuals(initialBlur, 0);
+      answerCard.classList.add('hidden');
+      updateStartPauseUI();
+
+      // Navigation Disable Check
+      prevBtn.disabled = (currentIndex === 0);
+      nextBtn.disabled = (currentIndex === defaultQuestions.length - 1);
+
+      // Handle local Git image path with automatic fallback
+      quizImage.style.opacity = '0';
+      quizImage.src = q.imageUrl;
+
+      quizImage.onerror = () => {
+        if (q.fallbackUrl && quizImage.src !== q.fallbackUrl) {
+          quizImage.src = q.fallbackUrl;
+        } else {
+          quizImage.src = 'https://placehold.co/1200x800/1e293b/94a3b8?text=Image+Not+Found+in+Git+Directory';
+        }
+      };
+
+      quizImage.onload = () => {
+        quizImage.style.opacity = '1';
+      };
+    }
+
+    function updateBlurVisuals(blurPx, progressPercent) {
+      const scaleVal = 1.08 - (1 - blurPx / initialBlur) * 0.08;
+      const brightnessVal = 0.5 + (1 - blurPx / initialBlur) * 0.5;
+
+      quizImage.style.filter = `blur(${blurPx}px) brightness(${brightnessVal}) contrast(1.1)`;
+      quizImage.style.transform = `scale(${scaleVal})`;
+
+      progressBar.style.width = `${Math.min(100, progressPercent)}%`;
+
+      if (!isRunning && !isRevealed && pausedTimeElapsed === 0) {
+        timerText.textContent = `READY (${revealDuration}s)`;
+      } else if (isRevealed) {
+        timerText.textContent = `REVEALED`;
+      } else {
+        const remaining = Math.max(0, revealDuration - (pausedTimeElapsed / 1000));
+        timerText.textContent = `${remaining.toFixed(1)}s`;
+      }
+    }
+
+    function startReveal() {
+      if (isRevealed) return;
+      initAudio();
+      playSound('start');
+      isRunning = true;
+      startTime = performance.now() - pausedTimeElapsed;
+
+      badgeIcon.classList.add('hidden');
+      spinner.classList.remove('hidden');
+
+      updateStartPauseUI();
+      animateStep();
+    }
+
+    function pauseReveal() {
+      if (!isRunning) return;
+      playSound('pause');
+      stopAnimation();
+      updateStartPauseUI();
+    }
+
+    function stopAnimation() {
+      isRunning = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      badgeIcon.classList.remove('hidden');
+      spinner.classList.add('hidden');
+    }
+
+    function animateStep() {
+      if (!isRunning) return;
+
+      const now = performance.now();
+      pausedTimeElapsed = now - startTime;
+      const totalMs = revealDuration * 1000;
+      const progress = Math.min(1, pausedTimeElapsed / totalMs);
+
+      currentBlur = Math.max(0, initialBlur * (1 - progress));
+      updateBlurVisuals(currentBlur, progress * 100);
+
+      if (Math.floor(pausedTimeElapsed) % 1000 < 20) {
+        playSound('tick');
+      }
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animateStep);
+      } else {
+        triggerCompleteReveal();
+      }
+    }
+
+    function triggerCompleteReveal() {
+      stopAnimation();
+      isRevealed = true;
+      currentBlur = 0;
+      updateBlurVisuals(0, 100);
+      answerCard.classList.remove('hidden');
+      playSound('reveal');
+      updateStartPauseUI();
+    }
+
+    function resetQuestion() {
+      stopAnimation();
+      currentBlur = initialBlur;
+      pausedTimeElapsed = 0;
+      isRevealed = false;
+      answerCard.classList.add('hidden');
+      updateBlurVisuals(initialBlur, 0);
+      updateStartPauseUI();
+    }
+
+    function updateStartPauseUI() {
+      if (isRevealed) {
+        startPauseBtn.className = "px-8 py-3.5 rounded-2xl bg-slate-800 text-slate-500 font-extrabold text-base border border-slate-700 cursor-not-allowed flex items-center gap-2.5";
+        startPauseIcon.className = "fa-solid fa-check text-lg";
+        startPauseLabel.textContent = "REVEALED";
+      } else if (isRunning) {
+        startPauseBtn.className = "px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-base tracking-wide shadow-xl shadow-amber-600/30 border border-amber-400/30 transition-all transform active:scale-95 flex items-center gap-2.5";
+        startPauseIcon.className = "fa-solid fa-pause text-lg";
+        startPauseLabel.textContent = "PAUSE";
+      } else {
+        startPauseBtn.className = "px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-base tracking-wide shadow-xl shadow-indigo-600/30 border border-indigo-400/30 transition-all transform active:scale-95 flex items-center gap-2.5 animate-pulse-glow";
+        startPauseIcon.className = "fa-solid fa-play text-lg";
+        startPauseLabel.textContent = pausedTimeElapsed > 0 ? "RESUME" : "START REVEAL";
+      }
+    }
+
+    // --- HOST EDIT ANSWERS MODAL LOGIC ---
+    function renderAnswersEditor() {
+      answersListContainer.innerHTML = '';
+      
+      defaultQuestions.forEach((q, idx) => {
+        const row = document.createElement('div');
+        row.className = "bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2";
+        
+        const currentAns = customAnswers[idx] || q.defaultAnswer;
+        
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-indigo-400 font-display">QUESTION #${idx + 1} (${q.category})</span>
+            <span class="text-xs text-slate-500">Image: <code class="text-slate-400">${q.imageUrl}</code></span>
+          </div>
+          <p class="text-xs text-slate-300 font-medium">${q.prompt}</p>
+          <div>
+            <label class="block text-xs font-semibold text-amber-400 mb-1">Answer Text</label>
+            <input type="text" data-idx="${idx}" value="${currentAns}" class="answer-input w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none focus:border-amber-400" />
+          </div>
+        `;
+        answersListContainer.appendChild(row);
+      });
+    }
+
+    function saveAnswers() {
+      const inputs = answersListContainer.querySelectorAll('.answer-input');
+      inputs.forEach(input => {
+        const idx = parseInt(input.getAttribute('data-idx'));
+        customAnswers[idx] = input.value.trim();
+      });
+      
+      localStorage.setItem('quizSessionAnswers', JSON.stringify(customAnswers));
+      editorModal.classList.add('hidden');
+      loadQuestion(currentIndex);
+      showToast("Answers saved for this session!");
+    }
+
+    function resetAnswersToDefault() {
+      if (confirm("Reset all answer edits back to default answers?")) {
+        customAnswers = defaultQuestions.map(q => q.defaultAnswer);
+        localStorage.removeItem('quizSessionAnswers');
+        renderAnswersEditor();
+        showToast("Answers restored to defaults!");
+      }
+    }
+
+    // --- EVENT LISTENERS ---
+    startPauseBtn.addEventListener('click', () => {
+      if (isRevealed) return;
+      if (isRunning) {
+        pauseReveal();
+      } else {
+        startReveal();
+      }
+    });
+
+    revealAnswerBtn.addEventListener('click', () => {
+      triggerCompleteReveal();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resetQuestion();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentIndex > 0) loadQuestion(currentIndex - 1);
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentIndex < defaultQuestions.length - 1) loadQuestion(currentIndex + 1);
+    });
+
+    // Speed Selector Buttons
+    speedBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        speedBtns.forEach(b => {
+          b.className = "speed-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all";
+        });
+        e.currentTarget.className = "speed-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow shadow-indigo-500/30 transition-all";
+        revealDuration = parseInt(e.currentTarget.getAttribute('data-speed'));
+        resetQuestion();
+      });
+    });
+
+    // Mute Sound Toggle
+    audioBtn.addEventListener('click', () => {
+      audioMuted = !audioMuted;
+      if (audioMuted) {
+        audioIcon.className = "fa-solid fa-volume-xmark text-slate-500 text-lg";
+      } else {
+        audioIcon.className = "fa-solid fa-volume-high text-indigo-400 text-lg";
+        playSound('tick');
+      }
+    });
+
+    // Fullscreen Toggle
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Fullscreen request error: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    });
+
+    // Host Editor Modal Triggers
+    openEditorBtn.addEventListener('click', () => {
+      renderAnswersEditor();
+      editorModal.classList.remove('hidden');
+    });
+
+    closeEditorBtn.addEventListener('click', () => {
+      editorModal.classList.add('hidden');
+    });
+
+    saveAndApplyBtn.addEventListener('click', saveAnswers);
+    resetDefaultsBtn.addEventListener('click', resetAnswersToDefault);
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    // Keyboard / Remote Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (editorModal.classList.contains('hidden')) {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          startPauseBtn.click();
+        } else if (e.code === 'ArrowRight') {
+          if (currentIndex < defaultQuestions.length - 1) loadQuestion(currentIndex + 1);
+        } else if (e.code === 'ArrowLeft') {
+          if (currentIndex > 0) loadQuestion(currentIndex - 1);
+        } else if (e.code === 'KeyR') {
+          revealAnswerBtn.click();
+        }
+      }
+    });
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+      loadQuestion(0);
+    };
+  </script>
+
+</body>
+</html>
